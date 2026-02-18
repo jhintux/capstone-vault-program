@@ -12,14 +12,14 @@ pub struct InitializeVault<'info> {
     #[account(
         init,
         space = Vault::DISCRIMINATOR.len() + Vault::INIT_SPACE,
-        seeds = [b"vault", user.key().as_ref(), mint.key().as_ref()],
-        payer = user,
+        seeds = [b"vault", owner.key().as_ref(), mint.key().as_ref()],
+        payer = owner,
         bump
     )]
     vault: Account<'info, Vault>,
     #[account(
         init,
-        payer = user,
+        payer = owner,
         associated_token::mint = mint,
         associated_token::authority = vault,
         associated_token::token_program = token_program
@@ -30,7 +30,7 @@ pub struct InitializeVault<'info> {
     )]
     mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
-    user: Signer<'info>,
+    owner: Signer<'info>,
     associated_token_program: Program<'info, AssociatedToken>,
     token_program: Interface<'info, TokenInterface>,
     system_program: Program<'info, System>,

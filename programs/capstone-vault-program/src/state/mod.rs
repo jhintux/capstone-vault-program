@@ -6,7 +6,7 @@ pub struct Vault {
     #[max_len(5)]
     pub owners: Vec<Pubkey>,
     pub threshold: u8,
-    pub proposal_count: u8,
+    pub proposal_count: u64,
     pub bump: u8,
     pub is_active: Option<bool>
 }
