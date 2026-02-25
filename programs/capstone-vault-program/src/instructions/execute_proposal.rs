@@ -75,7 +75,7 @@ impl<'info> ExecuteProposal<'info> {
         let bump = self.vault.bump;
         let seeds: &[&[u8]] = &[
             b"vault",
-            self.owner.key().as_ref(),
+            self.owner.key.as_ref(),
             mint_key.as_ref(),
             &[bump],
         ];
