@@ -16,7 +16,7 @@ pub struct InitializeVault<'info> {
         payer = owner,
         bump
     )]
-    vault: Account<'info, Vault>,
+    pub vault: Account<'info, Vault>,
     #[account(
         init,
         payer = owner,
@@ -24,16 +24,13 @@ pub struct InitializeVault<'info> {
         associated_token::authority = vault,
         associated_token::token_program = token_program
     )]
-    vault_ata: InterfaceAccount<'info, TokenAccount>,
-    #[account(
-        mint::token_program = token_program
-    )]
-    mint: InterfaceAccount<'info, Mint>,
+    pub vault_ata: InterfaceAccount<'info, TokenAccount>,
+    pub mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
-    owner: Signer<'info>,
-    associated_token_program: Program<'info, AssociatedToken>,
-    token_program: Interface<'info, TokenInterface>,
-    system_program: Program<'info, System>,
+    pub owner: Signer<'info>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> InitializeVault<'info> {

@@ -8,6 +8,8 @@ pub enum VaultError {
 
 #[error_code]
 pub enum ProposalError {
+    #[msg("Destination account does not match proposal destination")]
+    InvalidDestination,
     #[msg("Proposal already executed")]
     ProposalAlreadyExecuted,
     #[msg("Owner already approved the proposal")]

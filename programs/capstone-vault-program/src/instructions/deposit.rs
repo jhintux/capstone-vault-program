@@ -11,33 +11,32 @@ use crate::state::Vault;
 pub struct Deposit<'info> {
     #[account(mut)]
     owner: Signer<'info>,
-    #[account(
-        mint::token_program = token_program
-    )]
-    mint: InterfaceAccount<'info, Mint>,
+    /// CHECK: Creator pubkey is only used for vault PDA derivation; no account data is read.
+    pub creator: UncheckedAccount<'info>,
+    pub mint: InterfaceAccount<'info, Mint>,
     #[account(
         mut,
-        seeds = [b"vault", owner.key().as_ref(), mint.key().as_ref()],
+        seeds = [b"vault", creator.key().as_ref(), mint.key().as_ref()],
         bump = vault.bump
     )]
-    vault: Account<'info, Vault>,
+    pub vault: Account<'info, Vault>,
     #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = vault,
         associated_token::token_program = token_program
     )]
-    vault_ata: InterfaceAccount<'info, TokenAccount>,
+    pub vault_ata: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = owner,
         associated_token::token_program = token_program
     )]
-    owner_ata: InterfaceAccount<'info, TokenAccount>,
-    associated_token_program: Program<'info, AssociatedToken>,
-    token_program: Interface<'info, TokenInterface>,
-    system_program: Program<'info, System>,
+    pub owner_ata: InterfaceAccount<'info, TokenAccount>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> Deposit<'info> {

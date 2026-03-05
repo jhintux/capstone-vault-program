@@ -97,6 +97,7 @@ describe("capstone-vault-program", () => {
       .deposit(new anchor.BN(amount))
       .accountsStrict({
         owner: user.publicKey,
+        creator: user.publicKey,
         mint: mintPk,
         vault: vaultPda,
         vaultAta,
@@ -123,6 +124,7 @@ describe("capstone-vault-program", () => {
       .createProposal(destination, new anchor.BN(amount))
       .accountsStrict({
         owner: user.publicKey,
+        creator: user.publicKey,
         mint: mintPk,
         vault: vaultPda,
         proposal: proposalPda,
@@ -137,14 +139,17 @@ describe("capstone-vault-program", () => {
     mintPk: PublicKey,
     approver: Keypair,
     proposalId: anchor.BN,
+    creator?: PublicKey,
   ) {
-    const vaultPda = getVaultPda(mintPk, approver.publicKey);
+    const creatorPk = creator ?? approver.publicKey;
+    const vaultPda = getVaultPda(mintPk, creatorPk);
     const proposalPda = getProposalPda(vaultPda, proposalId);
 
     return program.methods
       .approveProposal()
       .accountsStrict({
         owner: approver.publicKey,
+        creator: creatorPk,
         mint: mintPk,
         vault: vaultPda,
         proposal: proposalPda,
@@ -160,8 +165,10 @@ describe("capstone-vault-program", () => {
     executor: Keypair,
     proposalId: anchor.BN,
     destinationAta: PublicKey,
+    creator?: PublicKey,
   ) {
-    const vaultPda = getVaultPda(mintPk, executor.publicKey);
+    const creatorPk = creator ?? executor.publicKey;
+    const vaultPda = getVaultPda(mintPk, creatorPk);
     const vaultAccount = await program.account.vault.fetch(vaultPda);
     const proposalPda = getProposalPda(vaultPda, proposalId);
     const proposalAccount = await program.account.proposal.fetch(proposalPda);
@@ -171,6 +178,8 @@ describe("capstone-vault-program", () => {
       .executeProposal()
       .accountsStrict({
         owner: executor.publicKey,
+        creator: creatorPk,
+        destination: proposalAccount.destination,
         mint: mintPk,
         vault: vaultPda,
         proposal: proposalPda,
@@ -341,6 +350,7 @@ describe("capstone-vault-program", () => {
           .deposit(new anchor.BN(100))
           .accountsStrict({
             owner: nonOwner.publicKey,
+            creator: nonOwner.publicKey,
             mint,
             vault: vaultPdaNonOwner,
             vaultAta: vaultAtaNonOwner,
@@ -467,6 +477,12 @@ describe("capstone-vault-program", () => {
       const proposal = await program.account.proposal.fetch(proposalPda);
       expect(proposal.approvals[0]).to.equal(true);
       expect(proposal.approvals[1]).to.equal(false);
+
+      // Second owner (non-creator) can approve when creator is passed
+      await approveProposal(mint, owner2, new anchor.BN(0), user.publicKey);
+      const proposalAfter = await program.account.proposal.fetch(proposalPda);
+      expect(proposalAfter.approvals[0]).to.equal(true);
+      expect(proposalAfter.approvals[1]).to.equal(true);
     });
 
     it("❌ Non-owner cannot approve", async () => {
@@ -790,6 +806,8 @@ describe("capstone-vault-program", () => {
           .executeProposal()
           .accountsStrict({
             owner: fakeSigner.publicKey,
+            creator: fakeSigner.publicKey,
+            destination,
             mint,
             vault: vaultPdaFake,
             proposal: proposalPda,
@@ -882,7 +900,7 @@ describe("capstone-vault-program", () => {
       expect(proposal.executed).to.equal(true);
     });
 
-    it("❌ Execute when destination ATA does not exist fails", async () => {
+    it("✅ Execute when destination ATA does not exist succeeds (program creates it)", async () => {
       const mint = await setupMintForTest();
       const owners = [user.publicKey];
       await initializeVault(mint, { owners, threshold: 1 });
@@ -904,19 +922,15 @@ describe("capstone-vault-program", () => {
       const destination = Keypair.generate().publicKey;
       await createProposal(mint, destination, 100);
       await approveProposal(mint, user, new anchor.BN(0));
-      const nonExistentDestAta = getAssociatedTokenAddressSync(
+      const destAtaAddress = getAssociatedTokenAddressSync(
         mint,
         destination,
         false,
       );
-      try {
-        await executeProposal(mint, user, new anchor.BN(0), nonExistentDestAta);
-        expect.fail(
-          "Expected transaction to fail (destination ATA not created)",
-        );
-      } catch {
-        // expected - destination ATA account does not exist
-      }
+      const tx = await executeProposal(mint, user, new anchor.BN(0), destAtaAddress);
+      expect(tx).to.be.a("string");
+      const destAtaInfo = await provider.connection.getTokenAccountBalance(destAtaAddress);
+      expect(Number(destAtaInfo.value.amount)).to.equal(100);
     });
   });
 
@@ -956,6 +970,7 @@ describe("capstone-vault-program", () => {
           .approveProposal()
           .accountsStrict({
             owner: user.publicKey,
+            creator: user.publicKey,
             mint: mint2,
             vault: vaultPda2,
             proposal: proposalPda2,
@@ -981,6 +996,7 @@ describe("capstone-vault-program", () => {
           .approveProposal()
           .accountsStrict({
             owner: user.publicKey,
+            creator: user.publicKey,
             mint,
             vault: vaultPda,
             proposal: wrongProposalPda,
@@ -1008,6 +1024,7 @@ describe("capstone-vault-program", () => {
           .approveProposal()
           .accountsStrict({
             owner: fakeSigner.publicKey,
+            creator: fakeSigner.publicKey,
             mint,
             vault: getVaultPda(mint, fakeSigner.publicKey),
             proposal: proposalPda,

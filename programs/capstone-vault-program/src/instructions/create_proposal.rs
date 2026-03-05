@@ -8,16 +8,15 @@ use crate::errors::VaultError;
 pub struct CreateProposal<'info> {
     #[account(mut)]
     owner: Signer<'info>,
-    #[account(
-        mint::token_program = token_program
-    )]
-    mint: InterfaceAccount<'info, Mint>,
+    /// CHECK: Creator pubkey is only used for vault PDA derivation; no account data is read.
+    pub creator: UncheckedAccount<'info>,
+    pub mint: InterfaceAccount<'info, Mint>,
     #[account(
         mut,
-        seeds = [b"vault", owner.key().as_ref(), mint.key().as_ref()],
+        seeds = [b"vault", creator.key().as_ref(), mint.key().as_ref()],
         bump = vault.bump
     )]
-    vault: Account<'info, Vault>,
+    pub vault: Account<'info, Vault>,
     #[account(
         init,
         space = Proposal::DISCRIMINATOR.len() + Proposal::INIT_SPACE,
@@ -25,9 +24,9 @@ pub struct CreateProposal<'info> {
         payer = owner,
         bump
     )]
-    proposal: Account<'info, Proposal>,
-    token_program: Interface<'info, TokenInterface>,
-    system_program: Program<'info, System>,
+    pub proposal: Account<'info, Proposal>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CreateProposal<'info> {
