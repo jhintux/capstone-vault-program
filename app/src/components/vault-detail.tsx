@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { getMint } from "@solana/spl-token";
 import {
   useVault,
   VaultAccount,
@@ -28,6 +29,7 @@ export function VaultDetail({
   vaultIndex,
 }: Props) {
   const { publicKey } = useWallet();
+  const { connection } = useConnection();
   const {
     fetchVault,
     fetchVaultAtaBalance,
@@ -42,6 +44,7 @@ export function VaultDetail({
   const [vault, setVault] = useState<VaultAccount | null>(null);
   const [ataBalance, setAtaBalance] = useState<string>("0");
   const [proposals, setProposals] = useState<ProposalAccount[]>([]);
+  const [mintDecimals, setMintDecimals] = useState<number | null>(null);
   const [depositOpen, setDepositOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
   const [txStatus, setTxStatus] = useState<string | null>(null);
@@ -68,6 +71,23 @@ export function VaultDetail({
   useEffect(() => {
     if (publicKey) refresh();
   }, [publicKey, refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mintInfo = await getMint(connection, mintPubkey);
+        if (!cancelled) setMintDecimals(mintInfo.decimals);
+      } catch {
+        if (!cancelled) setMintDecimals(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  // mintPubkey is derived from mintAddress; depend on primitive to avoid unnecessary refetches
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection, mintAddress]);
 
   const handleApprove = async (proposal: ProposalAccount) => {
     clearError();
@@ -199,7 +219,12 @@ export function VaultDetail({
                       <p className="font-medium">
                         Transfer{" "}
                         <span className="font-mono">
-                          {proposal.amount.toString()}
+                          {mintDecimals != null
+                            ? (Number(proposal.amount) / 10 ** mintDecimals).toLocaleString(undefined, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: mintDecimals,
+                              })
+                            : "…"}
                         </span>{" "}
                         of{" "}
                         <span className="font-mono">
